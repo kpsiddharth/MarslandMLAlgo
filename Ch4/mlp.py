@@ -9,6 +9,7 @@
 # Stephen Marsland, 2008, 2014
 
 import numpy as np
+from numpy import shape, nan, float128
 
 class mlp:
     """ A Multi-Layer Perceptron"""
@@ -27,8 +28,10 @@ class mlp:
     
         # Initialise network
         self.weights1 = (np.random.rand(self.nin+1,self.nhidden)-0.5)*2/np.sqrt(self.nin)
+        self.weights1 = self.weights1.astype(float128)
         self.weights2 = (np.random.rand(self.nhidden+1,self.nout)-0.5)*2/np.sqrt(self.nhidden)
-
+        self.weights2 = self.weights2.astype(float128)
+        
     def earlystopping(self,inputs,targets,valid,validtargets,eta,niterations=100):
     
         valid = np.concatenate((valid,-np.ones((np.shape(valid)[0],1))),axis=1)
@@ -58,15 +61,18 @@ class mlp:
     
         updatew1 = np.zeros((np.shape(self.weights1)))
         updatew2 = np.zeros((np.shape(self.weights2)))
-            
         for n in range(niterations):
     
             self.outputs = self.mlpfwd(inputs)
 
             error = 0.5*np.sum((self.outputs-targets)**2)
+            #import ipdb;
+            #if error < 30001:
+                #ipdb.set_trace()
+                
             if (np.mod(n,100)==0):
-                print "Iteration: ",n, " Error: ",error    
-
+                print "Iteration: ",n, " Error: ",error
+            
             # Different types of output neurons
             if self.outtype == 'linear':
             	deltao = (self.outputs-targets)/self.ndata
@@ -81,26 +87,72 @@ class mlp:
                       
             updatew1 = eta*(np.dot(np.transpose(inputs),deltah[:,:-1])) + self.momentum*updatew1
             updatew2 = eta*(np.dot(np.transpose(self.hidden),deltao)) + self.momentum*updatew2
-            self.weights1 -= updatew1
-            self.weights2 -= updatew2
-                
+            
+            self.weights1 = self.weights1 - updatew1
+            self.weights2 = self.weights2 - updatew2
+
             # Randomise order of inputs (not necessary for matrix-based calculation)
             #np.random.shuffle(change)
             #inputs = inputs[change,:]
             #targets = targets[change,:]
+        
+        print 'Weights 1 = ', self.weights1
+        print 'Weights 2 = ', self.weights2
             
     def mlpfwd(self,inputs):
         """ Run the network forward """
-
-        self.hidden = np.dot(inputs,self.weights1);
-        self.hidden = 1.0/(1.0+np.exp(-self.beta*self.hidden))
-        self.hidden = np.concatenate((self.hidden,-np.ones((np.shape(inputs)[0],1))),axis=1)
-
+        try:
+            self.hidden = np.dot(inputs,self.weights1);
+            self.hidden = 1.0/(1.0+np.exp(-self.beta*self.hidden))
+            self.hidden = np.concatenate((self.hidden,-np.ones((np.shape(inputs)[0],1))),axis=1)
+        except Exception as e:
+            print 'Exception : ', e.message
+            print 'Shape 1 = ', shape(inputs)[0], ' Shape 2 = ', shape(self.weights1), ' Shape 3 = ', shape(self.weights2)
+            raise e
+            
         outputs = np.dot(self.hidden,self.weights2);
 
         # Different types of output neurons
         if self.outtype == 'linear':
-        	return outputs
+            return outputs
+        elif self.outtype == 'logistic':
+            return 1.0/(1.0+np.exp(-self.beta*outputs))
+        elif self.outtype == 'softmax':
+            normalisers = np.sum(np.exp(outputs),axis=1)*np.ones((1,np.shape(outputs)[0]))
+            return np.transpose(np.transpose(np.exp(outputs))/normalisers)
+        else:
+            print "error"
+
+    def save(self):
+        filename = "weights1.dat"
+        print('Saving Input Layer Weights to File name: ', filename)
+        fileobj = open(filename, mode='wb')
+        self.weights1.tofile(fileobj)
+        fileobj.close()
+        
+        filename = 'weights2.dat'
+        fileobj2 = open(filename, mode='wb')
+        self.weights2.tofile(fileobj2)
+        fileobj2.close()
+
+    def mlpfwd2(self,inputs):
+        #import ipdb;
+        #ipdb.set_trace()
+        """ Run the network forward """
+        try:
+            self.hidden = np.dot(inputs,self.weights1);
+            self.hidden = 1.0/(1.0+np.exp(-self.beta*self.hidden))
+            self.hidden = np.concatenate((self.hidden,-np.ones((np.shape(inputs)[0],1))),axis=1)
+        except Exception as e:
+            print 'Exception : ', e.message
+            print 'Shape 1 = ', shape(inputs)[0], ' Shape 2 = ', shape(self.weights1), ' Shape 3 = ', shape(self.weights2)
+            raise e
+            
+        outputs = np.dot(self.hidden,self.weights2);
+
+        # Different types of output neurons
+        if self.outtype == 'linear':
+            return outputs
         elif self.outtype == 'logistic':
             return 1.0/(1.0+np.exp(-self.beta*outputs))
         elif self.outtype == 'softmax':
@@ -134,3 +186,4 @@ class mlp:
         print "Confusion matrix is:"
         print cm
         print "Percentage Correct: ",np.trace(cm)/np.sum(cm)*100
+
