@@ -12,14 +12,51 @@ class mnist_digit_recogniser:
         self.train_array = idx2numpy.convert_from_file(path_to_mnist_train_dataset)
         self.train_label_array = idx2numpy.convert_from_file(path_to_mnist_train_label_set)
 
-        #self.train_array = self.train_array[:5000,:]
-        #self.train_label_array = self.train_label_array[:5000]
+        # first collect the validation data
+        self.validation_array = self.train_array[50000:,:]
+        self.validation_label_array = self.train_label_array[50000:]
 
+        print 'Validation Set size = ', shape(self.validation_array)
+        print 'Validation Target size = ', shape(self.validation_label_array)
+
+        self.validation_array = reshape(self.validation_array, (10000, 784))
+        self.validation_label_array = reshape(self.validation_label_array, (10000, 1))
+
+        self.validation_1_of_n = zeros((shape(self.validation_label_array)[0], 10))
+        indices = where(self.validation_label_array[:, 0] == 0)
+        self.validation_1_of_n[indices, 0] = 1;
+        indices = where(self.validation_label_array[:, 0] == 1)
+        self.validation_1_of_n[indices, 1] = 1;
+        indices = where(self.validation_label_array[:, 0] == 2)
+        self.validation_1_of_n[indices, 2] = 1;
+        indices = where(self.validation_label_array[:, 0] == 3)
+        self.validation_1_of_n[indices, 3] = 1;
+        indices = where(self.validation_label_array[:, 0] == 4)
+        self.validation_1_of_n[indices, 4] = 1;
+        indices = where(self.validation_label_array[:, 0] == 5)
+        self.validation_1_of_n[indices, 5] = 1;
+        indices = where(self.validation_label_array[:, 0] == 6)
+        self.validation_1_of_n[indices, 6] = 1;
+        indices = where(self.validation_label_array[:, 0] == 7)
+        self.validation_1_of_n[indices, 7] = 1;
+        indices = where(self.validation_label_array[:, 0] == 8)
+        self.validation_1_of_n[indices, 8] = 1;
+        indices = where(self.validation_label_array[:, 0] == 9)
+        self.validation_1_of_n[indices, 9] = 1;
+        
+        self.validation_array.flags.writeable = True
+        self.validation_array = self.validation_array.astype(float128)
+        self.validation_array[:,:] = (self.validation_array[:,:] - self.validation_array[:,:].mean(axis = 0)) / 255.0
+        
+        # not rearrange the input data as per the requirements
+        self.train_array = self.train_array[:50000,:]
+        self.train_label_array = self.train_label_array[:50000]
+        
         print 'Original Training Array Size = ', shape(self.train_array)
         print 'Original Training Label Array Size = ', shape(self.train_label_array)
 
-        self.train_array = reshape(self.train_array, (60000, 784))
-        self.train_label_array = reshape(self.train_label_array, (60000, 1))
+        self.train_array = reshape(self.train_array, (50000, 784))
+        self.train_label_array = reshape(self.train_label_array, (50000, 1))
         
         self.train_array.flags.writeable = True
         self.train_array = self.train_array.astype(float128)
@@ -82,10 +119,11 @@ class mnist_digit_recogniser:
         indices = where(self.test_label_array[:, 0] == 9)
         self.test_1_of_n[indices, 9] = 1;
         
-        self.m = mlp.mlp(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 4, outtype='softmax')
+        self.m = mlp.mlp(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 8, outtype='softmax')
 
     def createModel(self):
-        self.m.mlptrain(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 0.25, 100)
+        self.m.earlystopping(self.train_array.astype(float128), self.target_1_of_n.astype(float128),self.validation_array,self.validation_1_of_n,0.25)
+        # self.m.mlptrain(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 0.25, 1000)
         self.m.save()
 
     def testModel(self):
@@ -127,6 +165,5 @@ class mnist_digit_recogniser:
 recogniser = mnist_digit_recogniser('/home/ubuntu/ml/data/train-images-idx3-ubyte', '/home/ubuntu/ml/data/train-labels-idx1-ubyte', 
                                     '/home/ubuntu/ml/data/t10k-images-idx3-ubyte', '/home/ubuntu/ml/data/t10k-labels-idx1-ubyte')
 
-print 'Training MLP Model for Logistic output ..'
 recogniser.createModel()
 recogniser.testModel()
