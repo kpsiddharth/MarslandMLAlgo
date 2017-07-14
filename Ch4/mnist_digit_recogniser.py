@@ -2,6 +2,7 @@ import mlp
 import idx2numpy
 from numpy import shape, ndarray, transpose, reshape, concatenate, ones, zeros,\
     where, float128, nan, argmax
+from monitoring import monitoring
 
 class mnist_digit_recogniser:
     def __init__(self, path_to_mnist_train_dataset, path_to_mnist_train_label_set, path_to_mnist_test_dataset, path_to_mnist_test_label_set):
@@ -119,11 +120,11 @@ class mnist_digit_recogniser:
         indices = where(self.test_label_array[:, 0] == 9)
         self.test_1_of_n[indices, 9] = 1;
         
-        self.m = mlp.mlp(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 8, outtype='softmax')
+        self.m = mlp.mlp(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 4, outtype='softmax')
 
     def createModel(self):
-        self.m.earlystopping(self.train_array.astype(float128), self.target_1_of_n.astype(float128),self.validation_array,self.validation_1_of_n,0.25)
-        # self.m.mlptrain(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 0.25, 1000)
+        # self.m.earlystopping(self.train_array.astype(float128), self.target_1_of_n.astype(float128),self.validation_array,self.validation_1_of_n,0.25)
+        self.m.mlptrain(self.train_array.astype(float128), self.target_1_of_n.astype(float128), 0.25, 500)
         self.m.save()
 
     def testModel(self):
@@ -162,8 +163,8 @@ class mnist_digit_recogniser:
         #    print 'Evaluated Output = ', output
         self.m.confmat(self.test_array,self.test_1_of_n)
 
-recogniser = mnist_digit_recogniser('/home/ubuntu/ml/data/train-images-idx3-ubyte', '/home/ubuntu/ml/data/train-labels-idx1-ubyte', 
-                                    '/home/ubuntu/ml/data/t10k-images-idx3-ubyte', '/home/ubuntu/ml/data/t10k-labels-idx1-ubyte')
+recogniser = mnist_digit_recogniser('/home/siddhartha/ml/data/nist/train-images.idx3-ubyte', '/home/siddhartha/ml/data/nist/train-labels.idx1-ubyte', 
+                                    '/home/siddhartha/ml/data/nist/t10k-images.idx3-ubyte', '/home/siddhartha/ml/data/nist/t10k-labels.idx1-ubyte')
 
 recogniser.createModel()
 recogniser.testModel()

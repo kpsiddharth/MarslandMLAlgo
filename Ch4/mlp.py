@@ -10,6 +10,8 @@
 
 import numpy as np
 from numpy import shape, nan, float128
+from monitoring.monitoring import IterationError
+from datetime import datetime
 
 class mlp:
     """ A Multi-Layer Perceptron"""
@@ -90,6 +92,14 @@ class mlp:
             
             self.weights1 = self.weights1 - updatew1
             self.weights2 = self.weights2 - updatew2
+
+            err = IterationError()
+            err.iteration = n
+            err.delta = float(error)
+            err.date = n
+            err.save(index = 'ml_idx')
+            
+            print 'Printed error to DB .. {', err.iteration, ', ', err.delta, ', ', err.date, '}'
 
             # Randomise order of inputs (not necessary for matrix-based calculation)
             #np.random.shuffle(change)
